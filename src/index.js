@@ -13,6 +13,8 @@ function verifyIfExistsAccountCPF(request, response, next) {
     return response.status(400).json({ error: "Não há extrato!" });
   }
 
+  request.customer = customer; // fazemos isso para termos acesso ao customer fora da middleware
+
   return next();
 }
 
@@ -37,14 +39,38 @@ app.post("/account", (request, response) => {
   });
 
   return (
-    console.log(customers),
-    response.status(201).json({ error: "CPF cadastrado com sucesso!" }).send()
+    response.status(201).json({ message: "CPF cadastrado com sucesso!" }).send()
   );
 });
 
-app.get("/statement", (request, response) => {
-  verifyIfExistsAccountCPF()
+app.get("/statement", verifyIfExistsAccountCPF, (request, response) => {
+  const { customer } = request;
+
   return response.json(customer.statement);
+});
+
+app.post("/deposit", verifyIfExistsAccountCPF, (request, response) => {
+  const { description, amount } = request.body;
+  const { customer } = request;
+  const statementOperation = {
+    description,
+    amount,
+    created_at: new Date(),
+    type: "credit",
+  };
+
+  customer.statement.push(statementOperation);
+  return response
+    .status(201)
+    .json({ message: "Extrato adicionado com sucesso!" })
+    .send();
+});
+
+app.post("/withdraw", verifyIfExistsAccountCPF, (request, response) => {
+  const { amount } = request.body;
+  const { customer } = request;
+
+  
 });
 
 app.listen(3333);
