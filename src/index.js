@@ -18,6 +18,17 @@ function verifyIfExistsAccountCPF(request, response, next) {
   return next();
 }
 
+function getBalance(statement) {
+  const balance = statement.reduce((acc, item) => {
+    if ((item.type = "credit")) {
+      return acc + item.amount;
+    }
+    return acc - item.amount;
+  }, 0);
+
+  return balance;
+}
+
 app.use(express.json());
 
 app.post("/account", (request, response) => {
@@ -38,13 +49,17 @@ app.post("/account", (request, response) => {
     statement: [],
   });
 
-  return (
-    response.status(201).json({ message: "CPF cadastrado com sucesso!" }).send()
-  );
+  return response
+    .status(201)
+    .json({ message: "CPF cadastrado com sucesso!" })
+    .send();
 });
 
 app.get("/statement", verifyIfExistsAccountCPF, (request, response) => {
   const { customer } = request;
+
+  // const balance = getBalance(customer.statement);
+  // console.log("Balanço: R$", balance)
 
   return response.json(customer.statement);
 });
@@ -52,14 +67,18 @@ app.get("/statement", verifyIfExistsAccountCPF, (request, response) => {
 app.post("/deposit", verifyIfExistsAccountCPF, (request, response) => {
   const { description, amount } = request.body;
   const { customer } = request;
+  // const balance = getBalance(customer.statement);
+  
   const statementOperation = {
     description,
     amount,
     created_at: new Date(),
     type: "credit",
   };
-
+  
   customer.statement.push(statementOperation);
+  console.log("Valor do deposito: R$", amount)
+  // console.log("Balanço: R$", balance)
   return response
     .status(201)
     .json({ message: "Extrato adicionado com sucesso!" })
@@ -70,7 +89,25 @@ app.post("/withdraw", verifyIfExistsAccountCPF, (request, response) => {
   const { amount } = request.body;
   const { customer } = request;
 
-  
+  const balance = getBalance(customer.statement);
+
+  if (balance < amount) {
+    // console.log("Balanço: R$", balance, "Valor do saque: R$", amount)
+    return response.status(400).json({ error: "Saldo insuficiente!" });
+  }
+
+  const statementOperation = {
+    amount,
+    created_at: new Date(),
+    type: "debit",
+  };
+
+  customer.statement.push(statementOperation);
+
+  return response
+    .status(201)
+    .json({ message: "Saque realizado com sucesso!" })
+    .send();
 });
 
 app.listen(3333);
