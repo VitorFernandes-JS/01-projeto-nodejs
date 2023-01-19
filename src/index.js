@@ -55,11 +55,34 @@ app.post("/account", (request, response) => {
     .send();
 });
 
-app.get("/statement", verifyIfExistsAccountCPF, (request, response) => {
+app.get("/account", verifyIfExistsAccountCPF, (request, response) => {
   const { customer } = request;
 
-  // const balance = getBalance(customer.statement);
-  // console.log("Balanço: R$", balance)
+  return response.json({ customer });
+});
+
+app.put("/account", verifyIfExistsAccountCPF, (request, response) => {
+  const { name } = request.body;
+  const { customer } = request;
+
+  customer.name = name;
+
+  return response
+    .status(201)
+    .json({ message: "Nome alterado com sucesso!" })
+    .send();
+});
+
+app.delete("/account", verifyIfExistsAccountCPF, (request, response) => {
+  const { customer } = request;
+
+  customers.splice(customers.indexOf(customer), 1);
+
+  return response.json(customers);
+});
+
+app.get("/statement", verifyIfExistsAccountCPF, (request, response) => {
+  const { customer } = request;
 
   return response.json(customer.statement);
 });
@@ -67,18 +90,15 @@ app.get("/statement", verifyIfExistsAccountCPF, (request, response) => {
 app.post("/deposit", verifyIfExistsAccountCPF, (request, response) => {
   const { description, amount } = request.body;
   const { customer } = request;
-  // const balance = getBalance(customer.statement);
-  
+
   const statementOperation = {
     description,
     amount,
     created_at: new Date(),
     type: "credit",
   };
-  
+
   customer.statement.push(statementOperation);
-  console.log("Valor do deposito: R$", amount)
-  // console.log("Balanço: R$", balance)
   return response
     .status(201)
     .json({ message: "Extrato adicionado com sucesso!" })
@@ -108,6 +128,28 @@ app.post("/withdraw", verifyIfExistsAccountCPF, (request, response) => {
     .status(201)
     .json({ message: "Saque realizado com sucesso!" })
     .send();
+});
+
+app.get("/statement/date", verifyIfExistsAccountCPF, (request, response) => {
+  const { customer } = request;
+  const { date } = request.query;
+
+  const dateFormat = new Date(date + " 00:00");
+
+  const statement = customer.statement.filter(
+    (statement) =>
+      statement.created_at.toDateString() ===
+      new Date(dateFormat).toDateString()
+  );
+
+  return response.json(statement);
+});
+
+app.get("/balance", verifyIfExistsAccountCPF, (request, response) => {
+  const { customer } = request;
+  const balance = getBalance(customer.statement);
+
+  return response.json(balance);
 });
 
 app.listen(3333);
